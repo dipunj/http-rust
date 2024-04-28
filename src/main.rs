@@ -1,8 +1,47 @@
-use std::io::Write;
-use std::net::TcpListener;
+
+use std::io::{BufRead, BufReader, Write};
+use std::net::{TcpListener, TcpStream};
 
 fn ok_response(mut stream: std::net::TcpStream) {
-    stream.write_all("HTTP/1.1 200 OK\r\n\r\n".as_bytes()).unwrap()
+    stream
+        .write_all("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
+        .unwrap()
+}
+
+fn not_found_response(mut stream: std::net::TcpStream) {
+    stream
+        .write_all("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
+        .unwrap()
+}
+
+fn read_contents(req: &TcpStream) -> String {
+    let mut reader = BufReader::new(req);
+    let mut data = String::new();
+
+    reader.read_line(&mut data).unwrap();
+    return data;
+}
+
+fn parse_contents(contents: &str) -> (String, String, String) {
+    let mut parts = contents.split("\r\n").next().unwrap_or("").splitn(3, " ");
+
+    let method = parts.next().unwrap_or("").to_string();
+    let path = parts.next().unwrap_or("").to_string();
+    let http_version = parts.next().unwrap_or("").to_string();
+
+    (method, path, http_version)
+}
+
+
+fn handle_request(req: TcpStream) {
+    let data = read_contents(&req);
+    let (_method, path, _http_version) = parse_contents(&data);
+
+    return if path == "/" {
+        ok_response(req)
+    } else {
+        not_found_response(req)
+    }
 }
 
 fn main() {
@@ -11,7 +50,7 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(s) => {
-                ok_response(s);
+                handle_request(s);
             }
             Err(e) => {
                 println!("error: {}", e);
