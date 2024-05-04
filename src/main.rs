@@ -1,18 +1,8 @@
 
+mod http;
+
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
-
-fn ok_response(mut stream: std::net::TcpStream) {
-    stream
-        .write_all("HTTP/1.1 200 OK\r\n\r\n".as_bytes())
-        .unwrap()
-}
-
-fn not_found_response(mut stream: std::net::TcpStream) {
-    stream
-        .write_all("HTTP/1.1 404 Not Found\r\n\r\n".as_bytes())
-        .unwrap()
-}
 
 fn read_contents(req: &TcpStream) -> String {
     let mut reader = BufReader::new(req);
@@ -37,7 +27,7 @@ fn handle_request(req: TcpStream) {
     let data = read_contents(&req);
     let (_method, path, _http_version) = parse_contents(&data);
 
-    return if path == "/" {
+    return if path.starts_with("/echo/") {
         ok_response(req)
     } else {
         not_found_response(req)
