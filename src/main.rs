@@ -20,6 +20,10 @@ fn handle_request(req: &TcpStream) -> Result<String,  Box<dyn std::error::Error>
             } else if let Some(content) = request.header.path.strip_prefix("/echo/") {
                 let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, String::from(content));
                 Ok(res.to_string())
+            } else if request.header.path == "/user-agent" {
+                println!("HEREEEE {}", request.user_agent.to_string());
+                let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, request.user_agent.to_string());
+                Ok(res.to_string())
             } else {
                 let res = Response::new(Http1_1, HttpCode::NotFound, ContentType::TextPlain, String::new());
                 Ok(res.to_string())
