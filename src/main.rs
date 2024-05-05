@@ -3,6 +3,7 @@ mod http;
 
 use std::error::Error;
 use std::io::Write;
+use std::thread;
 use std::net::{TcpListener, TcpStream};
 use crate::http::code::HttpCode;
 use crate::http::content_type::ContentType;
@@ -10,6 +11,8 @@ use crate::http::content_type::ContentType;
 use crate::http::request::Request;
 use crate::http::response::Response;
 use crate::http::version::Version::Http1_1;
+
+
 
 fn handle_request(req: &TcpStream) -> Result<String,  Box<dyn std::error::Error>>  {
     match Request::from_tcp_stream(&req) {
@@ -38,23 +41,25 @@ fn handle_request(req: &TcpStream) -> Result<String,  Box<dyn std::error::Error>
 
 }
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:4221").unwrap();
+fn main() -> Result<(), Box<dyn Error>> {
+    let listener = TcpListener::bind("127.0.0.1:4221")?;
 
     for stream in listener.incoming() {
         match stream {
-            Ok(mut s) => {
-                match handle_request(&s) {
-                    Ok(response) => {
-                        s.write_all(response.as_bytes()).unwrap();
+            Ok(mut stream) => {
+                thread::spawn(move || {
+                    match handle_request(&stream) {
+                        Ok(response) => {
+                            stream.write_all(response.as_bytes()).unwrap();
+                        }
+                        _ => {}
                     }
-
-                    _ => {}
-                }
+                });
             }
-            Err(e) => {
-                println!("error: {}", e);
+            Err(_) => {
+                // Handle error
             }
         }
     }
+    Ok(())
 }
