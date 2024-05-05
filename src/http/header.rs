@@ -1,19 +1,16 @@
 use crate::http::method::Method;
 use crate::http::code::HttpCode;
+use crate::http::version::Version;
 
 pub struct RequestHeader {
     method: Method,
-    path: String,
+    pub(crate) path: String,
     protocol: String,
 }
 
 
 impl RequestHeader {
-    fn from_string(raw_header: String) -> Option<Self> {
-        /**
-        * Converts raw_header to a object of type Header
-        **/
-
+    pub fn from_string(raw_header: String) -> Option<Self> {
         let mut header_data = raw_header.split(" ");
 
         let Some(method_str) = header_data.next() else {
@@ -48,12 +45,19 @@ impl RequestHeader {
 }
 
 pub struct ResponseHeader {
-    protocol: String,
+    protocol: Version,
     http_code: HttpCode
 }
 
 impl ResponseHeader {
-    fn to_string(&self) -> String {
-        self.protocol.to_string() + &self.http_code.to_string()
+    pub fn to_string(&self) -> String {
+        String::from(self.protocol.as_str()) + " " + &self.http_code.to_string()
+    }
+    
+    pub fn new(protocol: Version, http_code: HttpCode) -> Self {
+        Self {
+            protocol,
+            http_code,
+        }
     }
 }

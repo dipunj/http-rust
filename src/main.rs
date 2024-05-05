@@ -1,37 +1,37 @@
 
 mod http;
 
-use std::io::{BufRead, BufReader, Write};
+use std::error::Error;
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
+use crate::http::code::HttpCode;
+use crate::http::content_type::ContentType;
 
-fn read_contents(req: &TcpStream) -> String {
-    let mut reader = BufReader::new(req);
-    let mut data = String::new();
+use crate::http::request::Request;
+use crate::http::response::Response;
+use crate::http::version::Version::Http1_1;
 
-    reader.read_line(&mut data).unwrap();
-    return data;
-}
-
-fn parse_contents(contents: &str) -> (String, String, String) {
-    let mut parts = contents.split("\r\n").next().unwrap_or("").splitn(3, " ");
-
-    let method = parts.next().unwrap_or("").to_string();
-    let path = parts.next().unwrap_or("").to_string();
-    let http_version = parts.next().unwrap_or("").to_string();
-
-    (method, path, http_version)
-}
-
-
-fn handle_request(req: TcpStream) {
-    let data = read_contents(&req);
-    let (_method, path, _http_version) = parse_contents(&data);
-
-    return if path.starts_with("/echo/") {
-        ok_response(req)
-    } else {
-        not_found_response(req)
+fn handle_request(req: &TcpStream) -> Result<String,  Box<dyn std::error::Error>>  {
+    match Request::from_tcp_stream(&req) {
+        Ok(request) => {
+            return if request.header.path == "/" {
+                let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, String::new());
+                Ok(res.to_string())
+            } else if let Some(content) = request.header.path.strip_prefix("/echo/") {
+                let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, String::from(content));
+                Ok(res.to_string())
+            } else {
+                let res = Response::new(Http1_1, HttpCode::NotFound, ContentType::TextPlain, String::new());
+                Ok(res.to_string())
+            }
+        }
+        Err(err) => {
+            // Handle the error
+            println!("Error: {}", err);
+            Err(err)
+        }
     }
+
 }
 
 fn main() {
@@ -39,8 +39,14 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(s) => {
-                handle_request(s);
+            Ok(mut s) => {
+                match handle_request(&s) {
+                    Ok(response) => {
+                        s.write_all(response.as_bytes()).unwrap();
+                    }
+
+                    _ => {}
+                }
             }
             Err(e) => {
                 println!("error: {}", e);

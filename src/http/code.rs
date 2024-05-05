@@ -6,7 +6,7 @@ pub enum HttpCode {
 }
 
 impl HttpCode {
-    fn to_string(&self) -> &'static str {
+    pub fn to_string(&self) -> &'static str {
         match self {
             HttpCode::OK => "200 OK",
             HttpCode::BadRequest => "400 Bad Request",
