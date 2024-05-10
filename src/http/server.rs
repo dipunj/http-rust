@@ -4,7 +4,7 @@ use std::{fs, thread};
 use std::cmp::PartialEq;
 use std::path::Path;
 use crate::http::code::HttpCode;
-use crate::http::content_type::ContentType;
+use crate::http::content_type::MediaType;
 use crate::http::method::Method;
 use crate::http::request::Request;
 use crate::http::response::Response;
@@ -20,22 +20,22 @@ fn handle_request(req: &TcpStream, dir: &String) -> Result<String,  Box<dyn std:
     match Request::from_tcp_stream(&req) {
         Ok(request) => {
             return if request.first_line.path == "/" {
-                let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, String::new());
+                let res = Response::new(Http1_1, HttpCode::OK, MediaType::TextPlain, String::new());
                 Ok(res.to_string())
             } else if let Some(content) = request.first_line.path.strip_prefix("/echo/") {
-                let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, String::from(content));
+                let res = Response::new(Http1_1, HttpCode::OK, MediaType::TextPlain, String::from(content));
                 Ok(res.to_string())
             } else if request.first_line.path == "/user-agent" {
-                let res = Response::new(Http1_1, HttpCode::OK, ContentType::TextPlain, request.fields["User-Agent"].to_string());
+                let res = Response::new(Http1_1, HttpCode::OK, MediaType::TextPlain, request.fields["User-Agent"].to_string());
                 Ok(res.to_string())
             } else if let Some(filename) = request.first_line.path.strip_prefix("/files/") {
                 let file_path = Path::new(dir).join(filename);
                 if request.first_line.method == Method::GET {
                     return if let Ok(contents) = fs::read_to_string(file_path) {
-                        let res = Response::new(Http1_1, HttpCode::OK, ContentType::OctetStream, contents);
+                        let res = Response::new(Http1_1, HttpCode::OK, MediaType::OctetStream, contents);
                         Ok(res.to_string())
                     } else {
-                        let res = Response::new(Http1_1, HttpCode::NotFound, ContentType::TextPlain, String::new());
+                        let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
                         Ok(res.to_string())
                     }
                 } else if request.first_line.method == Method::POST {
@@ -43,19 +43,19 @@ fn handle_request(req: &TcpStream, dir: &String) -> Result<String,  Box<dyn std:
                         .write(true)
                         .create(true)
                         .open(file_path)?;
-                    return if let Ok(_contents) = file.write_all(request.fields["body"].as_bytes()) {
-                        let res = Response::new(Http1_1, HttpCode::CREATED, ContentType::TextPlain, String::new());
+                    return if let Ok(_contents) = file.write_all(request.body.as_bytes()) {
+                        let res = Response::new(Http1_1, HttpCode::CREATED, MediaType::TextPlain, String::new());
                         Ok(res.to_string())
                     } else {
-                        let res = Response::new(Http1_1, HttpCode::NotFound, ContentType::TextPlain, String::new());
+                        let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
                         Ok(res.to_string())
                     }
                 } else {
-                    let res = Response::new(Http1_1, HttpCode::NotFound, ContentType::TextPlain, String::new());
+                    let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
                     Ok(res.to_string())
                 }
             } else {
-                let res = Response::new(Http1_1, HttpCode::NotFound, ContentType::TextPlain, String::new());
+                let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
                 Ok(res.to_string())
             }
         }

@@ -1,3 +1,6 @@
+/// Represents the Status codes used by HTTP
+/// https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+
 
 #[derive(PartialEq, Eq)]
 pub enum HttpCode {

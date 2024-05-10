@@ -1,19 +1,20 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::net::TcpStream;
-use crate::http::header::RequestHeader;
+use crate::http::header::RequestLine;
 
 pub struct Request {
-    pub(crate) first_line: RequestHeader,
-    pub(crate) fields: HashMap<String, String>,
+    pub(crate) first_line: RequestLine, // the first line of the http request
+    pub(crate) fields: HashMap<String, String>, // all the other fields
+    pub(crate) body: String
 }
 
 impl Request {
     pub fn from_tcp_stream(raw_request: &TcpStream) -> Result<Self, Box<dyn std::error::Error>> {
         let mut reader = BufReader::new(raw_request);
 
-        let mut first_line = String::new();
-        reader.read_line(&mut first_line).unwrap();
+        let mut request_line = String::new();
+        reader.read_line(&mut request_line).unwrap();
 
         let mut fields = HashMap::new();
 
@@ -31,19 +32,20 @@ impl Request {
             }
         }
 
+        let mut body = String::new();
         if let Some(content_length) = fields.get("Content-Length") {
             let content_length: usize = content_length.parse().unwrap();
             let mut body_bytes = vec![0; content_length];
             reader.read_exact(&mut body_bytes).unwrap();
 
-            let body = String::from_utf8(body_bytes).unwrap();
-            fields.insert("body".to_string(), body);
+            body = String::from_utf8(body_bytes).unwrap();
         }
 
-        if let Some(header) = RequestHeader::from_string(first_line) {
+        if let Some(header) = RequestLine::from_string(request_line) {
             Ok(Self {
                 first_line: header,
                 fields,
+                body,
             })
         } else {
             Err("Failed to parse request header".into())

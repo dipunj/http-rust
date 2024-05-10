@@ -1,11 +1,11 @@
 use crate::http::code::HttpCode;
-use crate::http::content_type::ContentType;
+use crate::http::content_type::MediaType;
 use crate::http::header::ResponseHeader;
 use crate::http::version::Version;
 
 pub struct Response {
     header: ResponseHeader,
-    content_type: ContentType,
+    content_type: MediaType,
     content_length: u32,
     content: String
 }
@@ -33,7 +33,7 @@ impl Response {
 
     pub(crate) fn new(protocol: Version,
                       http_code: HttpCode,
-                      content_type: ContentType,
+                      content_type: MediaType,
                       content: String) -> Self {
         Self {
             header: ResponseHeader::new(protocol, http_code),
