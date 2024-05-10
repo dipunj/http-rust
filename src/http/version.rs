@@ -1,3 +1,4 @@
+/// Represents the HTTP Version
 pub enum Version {
     Http1_1,
 }

@@ -1,77 +1,23 @@
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
-use std::{fs, thread};
-use std::cmp::PartialEq;
-use std::path::Path;
-use crate::http::code::HttpCode;
-use crate::http::content_type::MediaType;
-use crate::http::method::Method;
+use std::thread;
+
 use crate::http::request::Request;
 use crate::http::response::Response;
-use crate::http::version::Version::Http1_1;
 
+// the server object which is exposed to the main function
 pub struct Server {
-    addr: String,
     file_dir: String,
-    listener: TcpListener
-}
-
-fn handle_request(req: &TcpStream, dir: &String) -> Result<String,  Box<dyn std::error::Error>>  {
-    match Request::from_tcp_stream(&req) {
-        Ok(request) => {
-            return if request.first_line.path == "/" {
-                let res = Response::new(Http1_1, HttpCode::OK, MediaType::TextPlain, String::new());
-                Ok(res.to_string())
-            } else if let Some(content) = request.first_line.path.strip_prefix("/echo/") {
-                let res = Response::new(Http1_1, HttpCode::OK, MediaType::TextPlain, String::from(content));
-                Ok(res.to_string())
-            } else if request.first_line.path == "/user-agent" {
-                let res = Response::new(Http1_1, HttpCode::OK, MediaType::TextPlain, request.fields["User-Agent"].to_string());
-                Ok(res.to_string())
-            } else if let Some(filename) = request.first_line.path.strip_prefix("/files/") {
-                let file_path = Path::new(dir).join(filename);
-                if request.first_line.method == Method::GET {
-                    return if let Ok(contents) = fs::read_to_string(file_path) {
-                        let res = Response::new(Http1_1, HttpCode::OK, MediaType::OctetStream, contents);
-                        Ok(res.to_string())
-                    } else {
-                        let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
-                        Ok(res.to_string())
-                    }
-                } else if request.first_line.method == Method::POST {
-                    let mut file = std::fs::OpenOptions::new()
-                        .write(true)
-                        .create(true)
-                        .open(file_path)?;
-                    return if let Ok(_contents) = file.write_all(request.body.as_bytes()) {
-                        let res = Response::new(Http1_1, HttpCode::CREATED, MediaType::TextPlain, String::new());
-                        Ok(res.to_string())
-                    } else {
-                        let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
-                        Ok(res.to_string())
-                    }
-                } else {
-                    let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
-                    Ok(res.to_string())
-                }
-            } else {
-                let res = Response::new(Http1_1, HttpCode::NotFound, MediaType::TextPlain, String::new());
-                Ok(res.to_string())
-            }
-        }
-        Err(err) => {
-            println!("Error: {}", err);
-            Err(err)
-        }
-    }
+    listener: TcpListener,
+    handler: fn(Request, &String) -> Response,
 }
 
 impl Server {
-    pub fn init(addr: &str, dir: String) -> Result<Self, std::io::Error> {
+    pub fn init(addr: &str, dir: String, handler: fn(Request, &String) -> Response) -> Result<Self, std::io::Error> {
         Ok(Self {
-            addr: addr.to_string(),
             listener: TcpListener::bind(addr)?,
             file_dir: dir,
+            handler,
         })
     }
 
@@ -80,13 +26,12 @@ impl Server {
             match stream {
                 Ok(mut stream) => {
                     let dir = self.file_dir.clone();
+                    let handler = self.handler;
                     thread::spawn(move || {
-                        match handle_request(&stream, &dir) {
-                            Ok(response) => {
-                                stream.write_all(response.as_bytes()).unwrap();
-                            }
-                            _ => {}
-                        }
+                        let req = Self::parse_request(&stream);
+                        let response = handler(req, &dir);
+
+                        stream.write_all(response.to_string().as_bytes()).unwrap();
                     });
                 }
                 Err(_) => {
@@ -97,4 +42,7 @@ impl Server {
         unreachable!();
     }
 
+    pub fn parse_request(stream: &TcpStream) -> Request {
+        Request::from_tcp_stream(&stream).unwrap() // unwrap() here is safe because parsing always succeeds
+    }
 }

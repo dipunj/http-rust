@@ -1,9 +1,9 @@
 mod header;
-mod method;
-mod response;
-mod request;
-mod code;
-mod content_type;
-mod version;
+pub mod method;
+pub mod response;
+pub mod request;
+pub mod code;
+pub mod media_type;
+pub mod version;
 
 pub mod server;

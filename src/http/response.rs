@@ -1,5 +1,5 @@
 use crate::http::code::HttpCode;
-use crate::http::content_type::MediaType;
+use crate::http::media_type::MediaType;
 use crate::http::header::ResponseHeader;
 use crate::http::version::Version;
 
