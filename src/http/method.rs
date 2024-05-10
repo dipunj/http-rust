@@ -1,4 +1,5 @@
 
+#[derive(PartialEq, Eq)]
 pub enum Method {
     GET,
     POST,

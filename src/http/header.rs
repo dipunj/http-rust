@@ -3,7 +3,7 @@ use crate::http::code::HttpCode;
 use crate::http::version::Version;
 
 pub struct RequestHeader {
-    method: Method,
+    pub(crate) method: Method,
     pub(crate) path: String,
     protocol: String,
 }
